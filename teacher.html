@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>教師儀表板・蟹堡王小店長</title>
+<style>
+:root{--ink:#16324a;--krab:#e8512f;--sand:#fff3cf}
+*{box-sizing:border-box}body{margin:0;font-family:"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;background:var(--sand);color:var(--ink)}
+header{background:var(--krab);color:#fff;padding:14px 20px;display:flex;flex-wrap:wrap;gap:12px;align-items:center}
+h1{margin:0;font-size:1.4rem;flex:1}
+header input,header select,header button{font:inherit;padding:8px 12px;border:2px solid var(--ink);border-radius:10px}
+header button{background:#fff;font-weight:700;cursor:pointer}
+#st{font-size:.9rem}
+main{padding:16px 20px}
+#sum{font-size:1.2rem;font-weight:700;margin-bottom:10px}
+table{width:100%;border-collapse:collapse;background:#fff;border:3px solid var(--ink);font-size:1.15rem}
+th,td{padding:8px 10px;border-bottom:1px solid #e2c97a;text-align:center}
+th{background:var(--ink);color:#fff}td:first-child{font-weight:700}
+small{font-size:.8rem}
+#rank{background:#fff;border:3px solid var(--krab);border-radius:14px;padding:14px 20px;margin-bottom:14px}
+#rank h2{margin:0 0 8px;font-size:1.8rem;color:var(--krab)}
+#rank ol{list-style:none;margin:0;padding:0;font-size:1.3rem}
+#rank li{display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px dashed #e2c97a}
+</style></head><body>
+<header><h1>🦀 蟹堡王小店長・教師儀表板</h1>
+<input id="pw" type="password" placeholder="教師密碼" aria-label="教師密碼"><button id="go">連線</button>
+<select id="cls" aria-label="班級代碼"></select><button id="rk">🏆 顯示排行榜</button><span id="st"></span></header>
+<main><div id="sum"></div><div id="rank" hidden></div><table id="tb"></table></main>
+<script src="config.js"></script>
+<script>
+const API=window.KK_API||'', $=s=>document.querySelector(s); let rows=[], timer=null, pass=sessionStorage.getItem('kk-pw')||'';
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])), stars=n=>n?'⭐'.repeat(n):'·';
+async function load(){
+  if(!API){$('#st').textContent='尚未設定 config.js 的網址';return false}
+  try{const j=await (await fetch(API+'?pass='+encodeURIComponent(pass))).json();
+    if(!j.ok){$('#st').textContent='密碼錯誤，或後台尚未部署';return false}
+    rows=j.rows; $('#st').textContent='更新時間 '+new Date().toLocaleTimeString('zh-TW'); draw(); return true;
+  }catch(e){$('#st').textContent='連線失敗，稍後自動重試';return false}
+}
+function draw(){
+  const sel=$('#cls'), keep=sel.value, codes=[...new Set(rows.map(r=>String(r.code)))];
+  sel.innerHTML=codes.map(c=>`<option>${esc(c)}</option>`).join(''); if(codes.includes(keep))sel.value=keep;
+  const list=rows.filter(r=>String(r.code)===sel.value).sort((a,b)=>String(a.id).localeCompare(String(b.id),'zh-Hant',{numeric:true}));
+  $('#sum').textContent=`班級代碼 ${sel.value||'—'}：共 ${list.length} 人，完成六座島 ${list.filter(r=>r.doneAt).length} 人`;
+  const I=[1,2,3,4,5,6];
+  $('#tb').innerHTML='<tr><th>座號／組別</th>'+I.map(i=>`<th>0${i}</th>`).join('')+'<th>目前</th></tr>'+list.map(r=>`<tr><td>${esc(r.id)}</td>`+I.map(i=>`<td>${stars(+r['s'+i])}<small>${+r['p'+i]?' 🗣️':''}${+r['c'+i]?' 🎙️'+r['c'+i]:''}</small></td>`).join('')+`<td>${Date.now()-r.updated<120000&&r.cur?'📍 0'+r.cur:''}</td></tr>`).join('');
+  const box=$('#rank'); if(box.hidden)return;
+  const rs=list.filter(r=>+r.total>0).sort((a,b)=>b.total-a.total||(a.doneAt||9e15)-(b.doneAt||9e15));
+  box.innerHTML=rs.length?`<h2>🏆 最佳小店長：${esc(rs[0].id)}（${rs[0].total} 分）</h2><ol>`+rs.slice(0,10).map((r,i)=>`<li><span><b>${['🥇','🥈','🥉'][i]||i+1}</b>　${esc(r.id)}</span><span>${r.total} 分</span></li>`).join('')+'</ol>':'還沒有人完成任何一座島。';
+}
+$('#rk').onclick=()=>{const b=$('#rank'); b.hidden=!b.hidden; $('#rk').textContent=b.hidden?'🏆 顯示排行榜':'🙈 隱藏排行榜'; draw()};
+$('#cls').onchange=draw;
+async function start(){if(await load()){sessionStorage.setItem('kk-pw',pass); clearInterval(timer); timer=setInterval(load,5000)}}
+$('#go').onclick=()=>{pass=$('#pw').value; start()}; $('#pw').onkeydown=e=>{if(e.key==='Enter')$('#go').click()};
+if(pass)start();
+</script></body></html>
