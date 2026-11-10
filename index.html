@@ -215,13 +215,12 @@ function send(p){
 addEventListener('online',flush);
 function loginUI(onOk){
   const d=document.createElement('div'); d.id='login';
-  d.innerHTML='<form><h2>🦀 蟹堡王小店長</h2><p>請輸入老師給的班級代碼，以及你的座號或組別。</p><input id="lc" placeholder="班級代碼" maxlength="12" aria-label="班級代碼"><input id="li" placeholder="座號或組別（例如 12 或 第3組）" maxlength="8" aria-label="座號或組別"><p class="tip" id="le"></p><button class="btn go" type="submit">開始</button></form>';
+  d.innerHTML='<form><h2>🦀 蟹堡王小店長</h2><p>請輸入你的座號或組別。</p><input id="li" placeholder="座號或組別（例如 12 或 第3組）" maxlength="8" aria-label="座號或組別"><p class="tip" id="le"></p><button class="btn go" type="submit">開始</button></form>';
   document.body.append(d);
-  d.querySelector('form').onsubmit=async e=>{
-    e.preventDefault(); const code=d.querySelector('#lc').value.trim(), id=d.querySelector('#li').value.trim(), le=d.querySelector('#le');
-    if(!code||!id){le.textContent='兩個欄位都要填寫喔。';return}
-    try{const j=await (await fetch(API,{...JH,body:JSON.stringify({t:'hello',code,id})})).json(); if(!j.ok){le.textContent='班級代碼不正確，請向老師確認。';return}}catch(err){}
-    setWho({code,id}); d.remove(); onOk&&onOk();
+  d.querySelector('form').onsubmit=e=>{
+    e.preventDefault(); const id=d.querySelector('#li').value.trim(), le=d.querySelector('#le');
+    if(!id){le.textContent='請先填寫座號或組別喔。';return}
+    setWho({code:'all',id}); d.remove(); onOk&&onOk();
   };
 }
 

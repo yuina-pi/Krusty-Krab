@@ -37,9 +37,9 @@ async function load(){
 }
 function draw(){
   const sel=$('#cls'), keep=sel.value, codes=[...new Set(rows.map(r=>String(r.code)))];
-  sel.innerHTML=codes.map(c=>`<option>${esc(c)}</option>`).join(''); if(codes.includes(keep))sel.value=keep;
+  sel.innerHTML=codes.map(c=>`<option>${esc(c)}</option>`).join(''); sel.hidden=codes.length<=1; if(codes.includes(keep))sel.value=keep;
   const list=rows.filter(r=>String(r.code)===sel.value).sort((a,b)=>String(a.id).localeCompare(String(b.id),'zh-Hant',{numeric:true}));
-  $('#sum').textContent=`班級代碼 ${sel.value||'—'}：共 ${list.length} 人，完成六座島 ${list.filter(r=>r.doneAt).length} 人`;
+  $('#sum').textContent=`共 ${list.length} 人，完成六座島 ${list.filter(r=>r.doneAt).length} 人`;
   const I=[1,2,3,4,5,6];
   $('#tb').innerHTML='<tr><th>座號／組別</th>'+I.map(i=>`<th>0${i}</th>`).join('')+'<th>目前</th></tr>'+list.map(r=>`<tr><td>${esc(r.id)}</td>`+I.map(i=>`<td>${stars(+r['s'+i])}<small>${+r['p'+i]?' 🗣️':''}${+r['c'+i]?' 🎙️'+r['c'+i]:''}</small></td>`).join('')+`<td>${Date.now()-r.updated<120000&&r.cur?'📍 0'+r.cur:''}</td></tr>`).join('');
   const box=$('#rank'); if(box.hidden)return;
