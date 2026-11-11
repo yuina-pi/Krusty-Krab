@@ -229,7 +229,7 @@ const speak=t=>{const ss=window.speechSynthesis; if(!ss)return; const go=()=>{co
 const spark=(st,e='✨')=>{for(let k=0;k<7;k++){const s=document.createElement('span');s.className='sp';s.textContent=e;s.style.cssText=`left:${10+Math.random()*80}%;top:${20+Math.random()*50}%`;st.append(s);setTimeout(()=>s.remove(),1200)}};
 const btn=(t,c='')=>{const b=document.createElement('button');b.className='btn '+c;b.textContent=t;return b};
 function openScene(id,done){
-  const sc=SCENES[id], m=$('#modal'), n=sc.s.length; let i=0,hit=0,tot=0,mr=null,rc=0; const sp=new Set();
+  const sc=SCENES[id], m=$('#modal'), n=sc.s.length; let i=0,hit=0,tot=0,mr=null,rc=0; const sp=new Set(); const log=o=>{if(id==='06')send({t:'ans',island:6,step:i,kind:sc.s[i][0],tries:0,...o})};
   m.hidden=false; send({t:'open',island:+id});
   m.innerHTML=`<div class="box"><div class="bar"><b>${sc.title}</b><span id="pg"></span><button id="x" aria-label="關閉">✕</button></div><div class="stage bg-${sc.bg}">${Object.entries(sc.who).map(([k,v])=>{const [c,p]=v.split('@'),[x,y,s]=p.split(','),im=CHARS[c][1];return `<div class="actor" id="ac-${k}" style="left:${x}%;top:${y}%;--s:${s}">${im?`<img src="${im}" alt="">`:CHARS[c][0]}</div>`}).join('')}<div id="cap"></div><div id="bub" hidden></div></div><div id="ui"></div></div>`;
   const close=()=>{speechSynthesis.cancel(); if(mr&&mr.state==='recording')mr.stop();m.hidden=true;m.innerHTML=''};
@@ -265,19 +265,19 @@ function openScene(id,done){
     const ok=()=>{if(!miss&&!bo)hit++; spark(st,t==='n'?'💰':'✨'); next();};
     if(t==='q'){
       const w=document.createElement('div'); w.className='opts';
-      sh(x.map((o,k)=>[o,k===y])).forEach(([o,c])=>{const b=btn(o,'opt'); b.onclick=()=>{
+      sh(x.map((o,k)=>[o,k===y])).forEach(([o,c])=>{const b=btn(o,'opt'); b.onclick=()=>{ log({pick:o,ok:c?1:0});
         if(c){b.classList.add('right'); w.querySelectorAll('button').forEach(z=>z.disabled=true); if(/[A-Za-z]{4}/.test(o))speak(o); ok();}
         else{miss=1; b.classList.add('wrong'); b.disabled=true;}}; w.append(b)});
       ui.append(w);
     } else if(t==='n'){
       ui.insertAdjacentHTML('beforeend','<div class="row"><input id="in" inputmode="numeric" placeholder="輸入金額（元）" aria-label="答案"></div>');
       const c=btn('檢查','go'), inp=$('#in'); $('.row').append(c);
-      const f=()=>{ if(Number(inp.value.replace(/[^\d.]/g,''))===x){inp.disabled=c.hidden=true; ok();} else{miss=1; inp.classList.remove('wrong'); void inp.offsetWidth; inp.classList.add('wrong');} };
+      const f=()=>{ const good=Number(inp.value.replace(/[^\d.]/g,''))===x; log({pick:inp.value.trim().slice(0,12),ok:good?1:0}); if(good){inp.disabled=c.hidden=true; ok();} else{miss=1; inp.classList.remove('wrong'); void inp.offsetWidth; inp.classList.add('wrong');} };
       c.onclick=f; inp.onkeydown=e=>{if(e.key==='Enter')f()}; inp.focus();
     } else {
       let k=0; const got=document.createElement('p'), w=document.createElement('div'); got.className='got'; w.className='opts';
       sh(x).forEach(o=>{const b=btn(o,'opt'); b.onclick=()=>{
-        if(o===x[k]){k++; b.disabled=true; b.classList.add('right'); got.textContent+=`${k}. ${o}　`; if(k===x.length)ok();}
+        if(o===x[k]){k++; b.disabled=true; b.classList.add('right'); got.textContent+=`${k}. ${o}　`; if(k===x.length){log({pick:'',ok:1,tries:miss+1});ok()}}
         else{miss=1; b.classList.add('wrong'); setTimeout(()=>b.classList.remove('wrong'),400);}}; w.append(b)});
       ui.append(w,got);
     }
