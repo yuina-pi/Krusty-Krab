@@ -235,17 +235,28 @@ function openScene(id,done){
   const close=()=>{speechSynthesis.cancel(); if(mr&&mr.state==='recording')mr.stop();m.hidden=true;m.innerHTML=''};
   $('#x').onclick=close; document.onkeydown=e=>{if(e.key==='Escape'&&!m.hidden)close()};
   const st=$('.stage'),ui=$('#ui'),cap=$('#cap'),bub=$('#bub'),act=$('#ac-a');
-  function recUI(){
-    const w=document.createElement('div'), b=btn('🎙️ 錄下我的聲音'), a=document.createElement('audio'), p=document.createElement('p');
-    w.className='rec'; a.controls=true; a.hidden=true; p.className='tip'; w.append(b,a,p);
-    const fb=()=>{ if(w.querySelector('label'))return; p.textContent='這個瀏覽器不允許直接錄音。請按下方按鈕，用手機的錄音功能錄好後，聲音會留在這個頁面。'; const l=document.createElement('label'); l.className='btn'; l.textContent='📱 用手機錄音器錄製'; const f=document.createElement('input'); f.type='file'; f.accept='audio/*'; f.setAttribute('capture',''); f.hidden=true; f.onchange=()=>{const x=f.files[0]; if(!x)return; if(a.src)URL.revokeObjectURL(a.src); a.src=URL.createObjectURL(x); a.hidden=false; p.textContent='按播放聽聽看。錄音只留在這支手機，不會上傳。'}; l.append(f); w.insertBefore(l,a)};
+  function recUI(say){
+    const stp=i, w=document.createElement('div'), b=btn('🎙️ 錄下我的聲音'), a=document.createElement('audio'), p=document.createElement('p'), up=btn('📤 送給老師');
+    let blob=null; w.className='rec'; a.controls=true; a.hidden=true; up.hidden=true; p.className='tip'; w.append(b,a,up,p);
+    const ready=bl=>{blob=bl; if(a.src)URL.revokeObjectURL(a.src); a.src=URL.createObjectURL(bl); a.hidden=false; const can=!!(API&&getWho()); up.hidden=!can; up.disabled=false; up.textContent='📤 送給老師'; p.textContent=can?'按播放聽聽看。按「送給老師」才會把錄音傳出去，沒按就只留在你的手機。':'按播放聽聽看。錄音只留在這支手機，不會上傳。'};
+    up.onclick=async()=>{
+      if(!blob)return; if(blob.size>2e6){p.textContent='錄音太長了，請縮短後重錄。';return}
+      up.disabled=true; up.textContent='傳送中…';
+      try{
+        const b64=await new Promise((res,rej)=>{const fr=new FileReader(); fr.onload=()=>res(String(fr.result).split(',')[1]); fr.onerror=rej; fr.readAsDataURL(blob)});
+        const j=await (await fetch(API,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({...getWho(),t:'rec',island:+id,step:stp,say:say||'',mime:blob.type||'audio/webm',data:b64})})).json();
+        if(!j.ok)throw 0; up.textContent='✅ 已送給老師';
+      }catch(e){up.disabled=false; up.textContent='📤 重新傳送'; p.textContent='傳送失敗，請檢查網路後再試一次。'}
+    };
+    const fb=()=>{ if(w.querySelector('label'))return; p.textContent='這個瀏覽器不允許直接錄音。請按下方按鈕，用手機的錄音功能錄好後，聲音會留在這個頁面。'; const l=document.createElement('label'); l.className='btn'; l.textContent='📱 用手機錄音器錄製'; const f=document.createElement('input'); f.type='file'; f.accept='audio/*'; f.setAttribute('capture',''); f.hidden=true; f.onchange=()=>{const x=f.files[0]; if(x)ready(x)}; l.append(f); w.insertBefore(l,a)};
     b.onclick=async()=>{
       if(mr&&mr.state==='recording'){mr.stop();return}
       try{
         speechSynthesis.cancel(); const s=await navigator.mediaDevices.getUserMedia({audio:true}), ch=[]; mr=new MediaRecorder(s);
         mr.ondataavailable=e=>ch.push(e.data);
-        mr.onstop=()=>{s.getTracks().forEach(t=>t.stop()); b.textContent='🎙️ 再錄一次'; if(a.src)URL.revokeObjectURL(a.src); a.src=URL.createObjectURL(new Blob(ch,{type:ch[0]?.type||'audio/webm'})); a.hidden=false; p.textContent='按播放聽聽看。錄音只留在這支手機，不會上傳。'};
-        mr.start(); rc++; b.textContent='⏹ 停止錄音'; p.textContent='錄音中…請大聲唸出句子。';
+        mr.onstop=()=>{s.getTracks().forEach(t=>t.stop()); b.textContent='🎙️ 再錄一次'; ready(new Blob(ch,{type:ch[0]?.type||'audio/webm'}))};
+        mr.start(); rc++; b.textContent='⏹ 停止錄音'; p.textContent='錄音中…請大聲唸出句子（最長 30 秒）。';
+        setTimeout(()=>{if(mr&&mr.state==='recording')mr.stop()},30000);
       }catch(e){fb()}
     };
     return w;
@@ -258,7 +269,7 @@ function openScene(id,done){
     const card=cm?`<img class="qimg card" src="${TASKIMG}" alt="任務卡內容">`:''; act.classList.remove('a-bounce'); void act.offsetWidth; act.classList.add('a-bounce');
     if(t==='b'){
       cap.textContent=q; if(cm)ui.insertAdjacentHTML('beforeend',`${card}<h3>${q}</h3>${x?`<p class="say">🗣️ ${x}</p>`:''}`); else if(y)ui.insertAdjacentHTML('beforeend',`<img class="qimg" src="${y}" alt="">`);
-      if(x){bub.textContent=x;bub.hidden=false; const h=btn('🔊 聽一次'); h.onclick=()=>speak(x); ui.append(h,recUI()); ui.insertAdjacentHTML('beforeend','<p class="tip">🗣️ 大聲唸出來；想聽聽自己的聲音，可以按錄音。沒聽到英文朗讀？請確認手機靜音開關已關閉、音量已調高。</p>'); speak(x); next('我唸完了 ▶',()=>sp.add(i));}
+      if(x){bub.textContent=x;bub.hidden=false; const h=btn('🔊 聽一次'); h.onclick=()=>speak(x); ui.append(h,recUI(x)); ui.insertAdjacentHTML('beforeend','<p class="tip">🗣️ 大聲唸出來；想聽聽自己的聲音，可以按錄音。沒聽到英文朗讀？請確認手機靜音開關已關閉、音量已調高。</p>'); speak(x); next('我唸完了 ▶',()=>sp.add(i));}
       else next(); return;
     }
     cap.textContent=''; if(!bo)tot++; let miss=0; ui.innerHTML=`${card}<h3>${bo?'🎁 加分題（不計分）　':''}${q}</h3>${z&&!cm?`<img class="qimg" src="${z}" alt="">`:''}`;
